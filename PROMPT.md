@@ -13,19 +13,22 @@ Constraints:
 - No build tools; pure HTML/CSS/JS.
 - Must work on mobile and desktop.
 - Use config.js to store copy, slides, particle settings, KV image paths, and theme CSS variables.
+- Use config.js to store pageMedia for intro and KV background images.
 - Camera access prompt, with a skip option that still lets users continue.
 - Use MediaPipe Hands from CDN for open-hand and closed-hand gestures.
 - Gesture logic:
-  - Open hand unlocks invitation.
+  - Open hand unlocks invitation and switches to the KV page.
   - Closed hand returns to intro.
-  - Include manual buttons as fallback.
+  - On the KV page, detect left/right hand or finger movement to navigate hotspots.
+  - Include manual buttons as fallback only when camera is unavailable.
 - Particle system:
   - Canvas text particles show the slogan.
-  - Particles morph into a wave form when unlocked and fade while KV appears.
+  - Particles disperse and transition when unlocked while KV appears.
   - Optional mask shape for the unlocked particle target, controlled by a config flag.
 - KV browse:
   - Horizontal slide track with 4 slides.
-  - Swipe left/right on mobile; arrow keys and buttons on desktop.
+  - Primary navigation uses hand swipe detection.
+  - Pointer/keyboard fallback only when camera is unavailable.
 - Include copy:
   - Slogan: "The New Wave of AI"
   - CTA: "See Xiaomi at MWC 2026"

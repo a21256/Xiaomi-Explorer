@@ -1,19 +1,19 @@
 window.APP_CONFIG = {
   copy: {
-    brand: "Xiaomi Explorers",
-    meta: "MWC 2026 - Barcelona",
-    kicker: "The New Wave of AI",
-    title: "See Xiaomi at MWC 2026",
-    dates: "2026.03.02 - 2026.03.05 - Hall X - Booth X",
-    subtitle: "Xiaomi Explorer: navigating the New Wave",
+    brand: "",
+    meta: "",
+    kicker: "",
+    title: "",
+    dates: "",
+    subtitle: "",
     gestureUnlock: "Show an open hand to unlock the invitation.",
     gestureReturn: "Close your hand to return.",
     unlockButton: "Unlock without camera",
-    kvTitle: "The New Wave of AI",
-    kvSubtitle: "See Xiaomi at MWC 2026",
-    ctaPrimary: "2026.03.02 - 2026.03.05",
-    ctaSecondary: "Hall X - Booth X",
-    kvHelp: "Swipe or use arrow keys to explore details.",
+    kvTitle: "",
+    kvSubtitle: "",
+    ctaPrimary: "",
+    ctaSecondary: "",
+    kvHelp: "Swipe your hand left or right to explore details.",
     prevLabel: "Prev",
     nextLabel: "Next",
     backLabel: "Back to intro",
@@ -29,6 +29,22 @@ window.APP_CONFIG = {
     cameraBlocked: "Camera: blocked",
     cameraUnsupported: "Camera: unsupported",
     cameraSkipped: "Camera: skipped"
+  },
+  pageMedia: {
+    intro: {
+      image: "",
+      imageMobile: "",
+      position: "50% 50%",
+      size: "cover",
+      overlayOpacity: 0.25
+    },
+    kv: {
+      image: "",
+      imageMobile: "",
+      position: "50% 50%",
+      size: "cover",
+      overlayOpacity: 0.25
+    }
   },
   theme: {
     cssVars: {
@@ -87,7 +103,11 @@ window.APP_CONFIG = {
   },
   gesture: {
     openFrames: 6,
-    closedFrames: 6
+    closedFrames: 6,
+    swipeEnabled: true,
+    swipeDistance: 0.14,
+    swipeCooldownMs: 800,
+    fallbackWhenCameraOn: false
   },
   slides: [
     {

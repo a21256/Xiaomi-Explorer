@@ -20,6 +20,7 @@ const cameraVideo = document.getElementById('camera');
 const config = window.APP_CONFIG || {};
 const themeConfig = config.theme || {};
 const themeVars = themeConfig.cssVars || {};
+const pageMediaConfig = config.pageMedia || {};
 
 const defaultCopy = {
   brand: 'Xiaomi Explorers',
@@ -115,6 +116,8 @@ const defaultOverlay =
     ? kvMediaConfig.overlayOpacity
     : 0.35;
 const mobileQuery = window.matchMedia('(max-width: 768px)');
+const introMediaConfig = pageMediaConfig.intro || {};
+const kvPageMediaConfig = pageMediaConfig.kv || {};
 const maskImageDesktop = maskConfig.image || '';
 const maskImageMobile = maskConfig.imageMobile || '';
 const maskFit = maskConfig.fit === 'cover' ? 'cover' : 'contain';
@@ -134,6 +137,15 @@ const targetCount =
     ? Math.floor(particleConfig.targetCount)
     : null;
 
+const swipeEnabled = gestureConfig.swipeEnabled !== false;
+const swipeDistance =
+  typeof gestureConfig.swipeDistance === 'number' ? gestureConfig.swipeDistance : 0.14;
+const swipeCooldownMs =
+  typeof gestureConfig.swipeCooldownMs === 'number'
+    ? gestureConfig.swipeCooldownMs
+    : 800;
+const fallbackWhenCameraOn = Boolean(gestureConfig.fallbackWhenCameraOn);
+
 let width = 0;
 let height = 0;
 let dpr = window.devicePixelRatio || 1;
@@ -152,6 +164,10 @@ let trackingActive = false;
 let openFrames = 0;
 let closedFrames = 0;
 let frameRequested = false;
+let swipeLastX = null;
+let swipeAccum = 0;
+let swipeDirection = 0;
+let swipeCooldownUntil = 0;
 
 const state = {
   mode: 'intro',
@@ -166,12 +182,52 @@ const closedThreshold =
 
 function setText(id, value) {
   const element = document.getElementById(id);
-  if (element && value !== undefined && value !== null) {
+  if (!element) {
+    return null;
+  }
+  if (value === undefined || value === null || value === '') {
+    element.textContent = '';
+    element.style.display = 'none';
+  } else {
     element.textContent = value;
+    element.style.removeProperty('display');
+  }
+  return element;
+}
+
+function setButtonText(button, value) {
+  if (!button) {
+    return;
+  }
+  if (value === undefined || value === null || value === '') {
+    button.textContent = '';
+    button.style.display = 'none';
+  } else {
+    button.textContent = value;
+    button.style.removeProperty('display');
+  }
+}
+
+function toggleContainer(container) {
+  if (!container) {
+    return;
+  }
+  const visible = Array.from(container.children).some(
+    (child) => child.style.display !== 'none'
+  );
+  if (visible) {
+    container.style.removeProperty('display');
+  } else {
+    container.style.display = 'none';
   }
 }
 
 function applyCopy() {
+  const introCopy = document.querySelector('.intro-copy');
+  const kvHeader = document.querySelector('.kv-header');
+  const cta = document.querySelector('.cta');
+  const topbar = document.querySelector('.topbar');
+
   setText('brand', copy.brand);
   setText('meta', copy.meta);
   setText('kicker', copy.kicker);
@@ -179,7 +235,7 @@ function applyCopy() {
   setText('dates', copy.dates);
   setText('subtitle', copy.subtitle);
   setText('gestureHint', copy.gestureUnlock);
-  setText('unlockBtn', copy.unlockButton);
+  setButtonText(unlockBtn, copy.unlockButton);
   setText('kvTitle', copy.kvTitle);
   setText('kvSubtitle', copy.kvSubtitle);
   setText('ctaPrimary', copy.ctaPrimary);
@@ -190,11 +246,46 @@ function applyCopy() {
   setText('footnote', copy.footnote);
   setText('cameraStatus', copy.cameraOff);
 
-  prevSlideBtn.textContent = copy.prevLabel;
-  nextSlideBtn.textContent = copy.nextLabel;
-  lockBtn.textContent = copy.backLabel;
-  enableCameraBtn.textContent = copy.enableCamera;
-  skipCameraBtn.textContent = copy.skipCamera;
+  setButtonText(prevSlideBtn, copy.prevLabel);
+  setButtonText(nextSlideBtn, copy.nextLabel);
+  setButtonText(lockBtn, copy.backLabel);
+  setButtonText(enableCameraBtn, copy.enableCamera);
+  setButtonText(skipCameraBtn, copy.skipCamera);
+
+  toggleContainer(topbar);
+  toggleContainer(introCopy);
+  toggleContainer(cta);
+  toggleContainer(kvHeader);
+}
+
+function getMediaSource(media) {
+  if (!media) {
+    return '';
+  }
+  if (isMobileView()) {
+    return media.imageMobile || media.image || '';
+  }
+  return media.image || '';
+}
+
+function applyPageMedia(elementId, media) {
+  const element = document.getElementById(elementId);
+  if (!element) {
+    return;
+  }
+  const source = getMediaSource(media);
+  if (!source) {
+    element.style.display = 'none';
+    element.style.backgroundImage = 'none';
+    return;
+  }
+  element.style.removeProperty('display');
+  element.style.backgroundImage = `url('${source}')`;
+  element.style.backgroundPosition = media.position || '50% 50%';
+  element.style.backgroundSize = media.size || 'cover';
+  const overlay =
+    typeof media.overlayOpacity === 'number' ? media.overlayOpacity : 0.35;
+  element.style.setProperty('--media-overlay', overlay);
 }
 
 function applyTheme() {
@@ -208,6 +299,13 @@ function applyTheme() {
 
 function isMobileView() {
   return mobileQuery.matches;
+}
+
+function canUseFallbackNavigation() {
+  if (!state.cameraEnabled) {
+    return true;
+  }
+  return fallbackWhenCameraOn;
 }
 
 function getSlideImageSource(slide) {
@@ -298,6 +396,35 @@ function updateSlideMedia() {
   });
 }
 
+function updateNavigationAvailability() {
+  const allowFallback = canUseFallbackNavigation();
+  [prevSlideBtn, nextSlideBtn, lockBtn].forEach((button) => {
+    if (!button) {
+      return;
+    }
+    if (allowFallback) {
+      button.removeAttribute('disabled');
+      button.style.removeProperty('pointer-events');
+      button.style.removeProperty('opacity');
+    } else {
+      button.setAttribute('disabled', 'true');
+      button.style.pointerEvents = 'none';
+      button.style.opacity = '0.4';
+    }
+  });
+  if (unlockBtn) {
+    if (!unlockBtn.textContent) {
+      unlockBtn.style.display = 'none';
+      return;
+    }
+    if (allowFallback) {
+      unlockBtn.style.removeProperty('display');
+    } else {
+      unlockBtn.style.display = 'none';
+    }
+  }
+}
+
 class Particle {
   constructor(x, y, index) {
     this.x = x;
@@ -346,6 +473,8 @@ function resizeCanvas() {
   buildParticles();
   updateSlideMetrics();
   updateMaskTargets();
+  applyPageMedia('introMedia', introMediaConfig);
+  applyPageMedia('kvMedia', kvPageMediaConfig);
 }
 
 function getSampleGap(overrideGap, overrideDensity) {
@@ -572,6 +701,61 @@ function updateMaskTargets() {
     });
 }
 
+function resetSwipeTracker() {
+  swipeLastX = null;
+  swipeAccum = 0;
+  swipeDirection = 0;
+}
+
+function getGesturePoint(landmarks) {
+  if (!landmarks || !landmarks.length) {
+    return null;
+  }
+  return landmarks[8] || landmarks[0] || null;
+}
+
+function handleSwipeGesture(landmarks) {
+  if (!swipeEnabled || state.mode !== 'kv' || !state.cameraEnabled) {
+    resetSwipeTracker();
+    return;
+  }
+  const point = getGesturePoint(landmarks);
+  if (!point) {
+    resetSwipeTracker();
+    return;
+  }
+  const now = performance.now();
+  if (now < swipeCooldownUntil) {
+    swipeLastX = point.x;
+    return;
+  }
+  if (swipeLastX === null) {
+    swipeLastX = point.x;
+    return;
+  }
+  const dx = point.x - swipeLastX;
+  swipeLastX = point.x;
+  if (Math.abs(dx) < 0.002) {
+    return;
+  }
+  const direction = Math.sign(dx);
+  if (direction !== swipeDirection) {
+    swipeDirection = direction;
+    swipeAccum = 0;
+  }
+  swipeAccum += dx;
+  if (Math.abs(swipeAccum) >= swipeDistance) {
+    if (swipeAccum < 0) {
+      goToSlide(currentSlide + 1);
+    } else {
+      goToSlide(currentSlide - 1);
+    }
+    swipeAccum = 0;
+    swipeDirection = 0;
+    swipeCooldownUntil = now + swipeCooldownMs;
+  }
+}
+
 function buildParticles() {
   particles = textTargets.map((point, index) =>
     new Particle(
@@ -611,14 +795,15 @@ function setMode(nextMode) {
     targetAlpha = 0.2;
     kv.setAttribute('aria-hidden', 'false');
     intro.setAttribute('aria-hidden', 'true');
-    gestureHint.textContent = copy.gestureReturn;
+    setText('gestureHint', copy.gestureReturn);
   } else {
     particleMode = 'text';
     targetAlpha = 1;
     kv.setAttribute('aria-hidden', 'true');
     intro.setAttribute('aria-hidden', 'false');
-    gestureHint.textContent = copy.gestureUnlock;
+    setText('gestureHint', copy.gestureUnlock);
   }
+  resetSwipeTracker();
 }
 
 function unlock() {
@@ -655,12 +840,18 @@ function handleSwipe() {
   let pointerId = null;
 
   kvStage.addEventListener('pointerdown', (event) => {
+    if (!canUseFallbackNavigation()) {
+      return;
+    }
     startX = event.clientX;
     pointerId = event.pointerId;
     kvStage.setPointerCapture(pointerId);
   });
 
   kvStage.addEventListener('pointerup', (event) => {
+    if (!canUseFallbackNavigation()) {
+      return;
+    }
     if (pointerId !== event.pointerId) {
       return;
     }
@@ -684,6 +875,9 @@ function handleKeys(event) {
   if (state.mode !== 'kv') {
     return;
   }
+  if (!canUseFallbackNavigation()) {
+    return;
+  }
   if (event.key === 'ArrowRight') {
     goToSlide(currentSlide + 1);
   }
@@ -705,6 +899,7 @@ async function startCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     updateCameraStatus(copy.cameraUnsupported, false);
     permissionOverlay.classList.add('hidden');
+    updateNavigationAvailability();
     return;
   }
 
@@ -719,16 +914,19 @@ async function startCamera() {
     state.cameraReady = true;
     updateCameraStatus(copy.cameraLive, true);
     permissionOverlay.classList.add('hidden');
+    updateNavigationAvailability();
     startHandTracking();
   } catch (error) {
     updateCameraStatus(copy.cameraBlocked, false);
     permissionOverlay.classList.add('hidden');
+    updateNavigationAvailability();
   }
 }
 
 function skipCamera() {
   updateCameraStatus(copy.cameraSkipped, false);
   permissionOverlay.classList.add('hidden');
+  updateNavigationAvailability();
 }
 
 function isFingerExtended(landmarks, tipIndex, pipIndex) {
@@ -758,6 +956,7 @@ function handleResults(results) {
   if (!hands.length) {
     openFrames = 0;
     closedFrames = 0;
+    resetSwipeTracker();
     return;
   }
   const { open, closed } = detectHandState(hands[0]);
@@ -780,6 +979,8 @@ function handleResults(results) {
     lock();
     closedFrames = 0;
   }
+
+  handleSwipeGesture(hands[0]);
 }
 
 function startHandTracking() {
@@ -836,11 +1037,14 @@ window.addEventListener('resize', () => {
 mobileQuery.addEventListener('change', () => {
   updateSlideMedia();
   updateMaskTargets();
+  applyPageMedia('introMedia', introMediaConfig);
+  applyPageMedia('kvMedia', kvPageMediaConfig);
 });
 
 applyTheme();
 applyCopy();
 buildSlides();
+updateNavigationAvailability();
 resizeCanvas();
 animate();
 

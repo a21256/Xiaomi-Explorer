@@ -14,8 +14,8 @@ Then open http://localhost:8000
 
 ## Config
 
-Edit config.js to update copy, theme CSS variables, KV slide content, particle
-behavior, mask settings, and KV images.
+Edit config.js to update copy, theme CSS variables, page backgrounds, KV slide
+content, particle behavior, mask settings, gesture navigation, and KV images.
 
 ## Files
 
