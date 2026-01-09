@@ -105,8 +105,13 @@ window.APP_CONFIG = {
     openFrames: 6,
     closedFrames: 6,
     swipeEnabled: true,
-    swipeDistance: 0.14,
-    swipeCooldownMs: 800,
+    swipeDistance: 0.1,
+    swipeCooldownMs: 600,
+    swipeDeadZone: 0.002,
+    swipeSuppressCloseMs: 600,
+    swipePoint: "wrist",
+    swipeResetZone: 0.08,
+    swipeResetFrames: 6,
     fallbackWhenCameraOn: false
   },
   slides: [

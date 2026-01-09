@@ -144,7 +144,20 @@ const swipeCooldownMs =
   typeof gestureConfig.swipeCooldownMs === 'number'
     ? gestureConfig.swipeCooldownMs
     : 800;
+const swipeDeadZone =
+  typeof gestureConfig.swipeDeadZone === 'number' ? gestureConfig.swipeDeadZone : 0.002;
+const swipeSuppressCloseMs =
+  typeof gestureConfig.swipeSuppressCloseMs === 'number'
+    ? gestureConfig.swipeSuppressCloseMs
+    : 600;
+const swipePoint = gestureConfig.swipePoint === 'index' ? 'index' : 'wrist';
 const fallbackWhenCameraOn = Boolean(gestureConfig.fallbackWhenCameraOn);
+const swipeResetZone =
+  typeof gestureConfig.swipeResetZone === 'number' ? gestureConfig.swipeResetZone : 0.08;
+const swipeResetFrames =
+  typeof gestureConfig.swipeResetFrames === 'number'
+    ? gestureConfig.swipeResetFrames
+    : 6;
 
 let width = 0;
 let height = 0;
@@ -168,6 +181,9 @@ let swipeLastX = null;
 let swipeAccum = 0;
 let swipeDirection = 0;
 let swipeCooldownUntil = 0;
+let swipeSuppressUntil = 0;
+let swipeNeutralFrames = 0;
+let swipeNeutralReady = false;
 
 const state = {
   mode: 'intro',
@@ -705,16 +721,22 @@ function resetSwipeTracker() {
   swipeLastX = null;
   swipeAccum = 0;
   swipeDirection = 0;
+  swipeSuppressUntil = 0;
+  swipeNeutralFrames = 0;
+  swipeNeutralReady = false;
 }
 
 function getGesturePoint(landmarks) {
   if (!landmarks || !landmarks.length) {
     return null;
   }
-  return landmarks[8] || landmarks[0] || null;
+  if (swipePoint === 'index') {
+    return landmarks[8] || landmarks[0] || null;
+  }
+  return landmarks[0] || landmarks[8] || null;
 }
 
-function handleSwipeGesture(landmarks) {
+function handleSwipeGesture(landmarks, now) {
   if (!swipeEnabled || state.mode !== 'kv' || !state.cameraEnabled) {
     resetSwipeTracker();
     return;
@@ -724,7 +746,20 @@ function handleSwipeGesture(landmarks) {
     resetSwipeTracker();
     return;
   }
-  const now = performance.now();
+  const distanceFromCenter = Math.abs(point.x - 0.5);
+  if (distanceFromCenter <= swipeResetZone) {
+    swipeNeutralFrames += 1;
+    if (swipeNeutralFrames >= swipeResetFrames) {
+      swipeNeutralReady = true;
+    }
+  } else {
+    swipeNeutralFrames = 0;
+  }
+
+  if (!swipeNeutralReady) {
+    swipeLastX = point.x;
+    return;
+  }
   if (now < swipeCooldownUntil) {
     swipeLastX = point.x;
     return;
@@ -735,9 +770,10 @@ function handleSwipeGesture(landmarks) {
   }
   const dx = point.x - swipeLastX;
   swipeLastX = point.x;
-  if (Math.abs(dx) < 0.002) {
+  if (Math.abs(dx) < swipeDeadZone) {
     return;
   }
+  swipeSuppressUntil = now + swipeSuppressCloseMs;
   const direction = Math.sign(dx);
   if (direction !== swipeDirection) {
     swipeDirection = direction;
@@ -752,7 +788,10 @@ function handleSwipeGesture(landmarks) {
     }
     swipeAccum = 0;
     swipeDirection = 0;
+    swipeNeutralReady = false;
+    swipeNeutralFrames = 0;
     swipeCooldownUntil = now + swipeCooldownMs;
+    swipeSuppressUntil = now + swipeSuppressCloseMs;
   }
 }
 
@@ -952,6 +991,7 @@ function handleResults(results) {
   if (!state.cameraEnabled) {
     return;
   }
+  const now = performance.now();
   const hands = results.multiHandLandmarks || [];
   if (!hands.length) {
     openFrames = 0;
@@ -964,8 +1004,12 @@ function handleResults(results) {
     openFrames += 1;
     closedFrames = 0;
   } else if (closed) {
-    closedFrames += 1;
-    openFrames = 0;
+    if (now >= swipeSuppressUntil) {
+      closedFrames += 1;
+      openFrames = 0;
+    } else {
+      closedFrames = 0;
+    }
   } else {
     openFrames = 0;
     closedFrames = 0;
@@ -980,7 +1024,7 @@ function handleResults(results) {
     closedFrames = 0;
   }
 
-  handleSwipeGesture(hands[0]);
+  handleSwipeGesture(hands[0], now);
 }
 
 function startHandTracking() {
