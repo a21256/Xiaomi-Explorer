@@ -14,13 +14,15 @@ Then open http://localhost:8000
 
 ## Config
 
-Edit config.js to update copy, theme CSS variables, page backgrounds, KV slide
-content, particle behavior, mask settings, gesture navigation, and KV images.
+Edit assets/js/config.js to update copy, theme CSS variables, page backgrounds,
+KV slide content, particle behavior, mask settings, gesture navigation, and KV
+images.
 
 ## Files
 
 - index.html
-- styles.css
-- config.js
-- app.js
-- PROMPT.md (MiMo prompt to recreate the project)
+- assets/css/styles.css
+- assets/js/config.js
+- assets/js/app.js
+- assets/img/ (KV images and masks)
+- docs/PROMPT.md (MiMo prompt to recreate the project)
