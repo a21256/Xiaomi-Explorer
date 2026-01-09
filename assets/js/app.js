@@ -773,13 +773,15 @@ function handleSwipeGesture(landmarks, now) {
   if (Math.abs(dx) < swipeDeadZone) {
     return;
   }
-  swipeSuppressUntil = now + swipeSuppressCloseMs;
   const direction = Math.sign(dx);
   if (direction !== swipeDirection) {
     swipeDirection = direction;
     swipeAccum = 0;
   }
   swipeAccum += dx;
+  if (Math.abs(swipeAccum) >= swipeDistance * 0.5) {
+    swipeSuppressUntil = Math.max(swipeSuppressUntil, now + swipeSuppressCloseMs);
+  }
   if (Math.abs(swipeAccum) >= swipeDistance) {
     if (swipeAccum < 0) {
       goToSlide(currentSlide + 1);
