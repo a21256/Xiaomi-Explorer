@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Xiaomi Explorers | The New Wave of AI</title>
+    <meta
+      name="description"
+      content="Xiaomi Explorers invitation. The New Wave of AI."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="scene" id="scene">
+      <header class="topbar">
+        <div class="brand" id="brand"></div>
+        <div class="meta" id="meta"></div>
+      </header>
+
+      <section class="intro" id="intro" aria-live="polite">
+        <canvas id="particleCanvas"></canvas>
+        <div class="intro-copy">
+          <p class="kicker" id="kicker"></p>
+          <h1 class="title" id="title"></h1>
+          <p class="dates" id="dates"></p>
+          <p class="subtitle" id="subtitle"></p>
+        </div>
+        <div class="gesture-hint" id="gestureHint"></div>
+        <div class="fallback-actions">
+          <button id="unlockBtn" class="ghost"></button>
+        </div>
+      </section>
+
+      <section class="kv" id="kv" aria-hidden="true">
+        <div class="kv-header">
+          <h2 id="kvTitle"></h2>
+          <p id="kvSubtitle"></p>
+          <div class="cta">
+            <span id="ctaPrimary"></span>
+            <span id="ctaSecondary"></span>
+          </div>
+        </div>
+        <div class="kv-stage" id="kvStage">
+          <div class="kv-track" id="kvTrack"></div>
+        </div>
+        <div class="kv-nav">
+          <button id="prevSlide" aria-label="Previous slide"></button>
+          <button id="nextSlide" aria-label="Next slide"></button>
+          <button id="lockBtn" class="ghost"></button>
+        </div>
+        <div class="kv-help" id="kvHelp"></div>
+      </section>
+
+      <section class="camera-panel" id="cameraPanel">
+        <div class="camera-status" id="cameraStatus"></div>
+        <video id="camera" playsinline muted></video>
+      </section>
+
+      <section class="permission" id="permissionOverlay" role="dialog">
+        <div class="permission-card">
+          <h2 id="permissionTitle"></h2>
+          <p id="permissionBody"></p>
+          <div class="permission-actions">
+            <button id="enableCamera"></button>
+            <button id="skipCamera" class="ghost"></button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footnote" id="footnote"></footer>
+    </main>
+
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
